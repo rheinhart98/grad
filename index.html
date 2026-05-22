@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Graduation! 🎉</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ffe5ec, #ffc2d1);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 420px;
+            width: 90%;
+            transition: all 0.5s ease;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #fb6f92;
+            font-size: 22px;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .instructions {
+            color: #6c757d;
+            font-size: 13px;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        /* Style Game Arena */
+        #game-box {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(to bottom, #fff0f3, #ffe3e8);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            border: 2px dashed #ffb3c1;
+            touch-action: none; /* Mencegah screen HP geser pas main */
+        }
+        #catcher {
+            font-size: 35px;
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            cursor: grab;
+            transition: transform 0.1s ease;
+        }
+        .falling-item {
+            font-size: 28px;
+            position: absolute;
+            user-select: none;
+        }
+        #score-board {
+            font-weight: bold;
+            color: #fb6f92;
+            margin-top: 12px;
+            font-size: 16px;
+        }
+        .btn-start {
+            background-color: #fb6f92;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 10px rgba(251, 111, 146, 0.4);
+            transition: background 0.2s;
+        }
+        .btn-start:hover {
+            background-color: #ff5c8a;
+        }
+        /* Style Bagian Hadiah */
+        #reward {
+            display: none;
+            animation: fadeIn 1s ease forwards;
+        }
+        #reward img {
+            width: 100%;
+            border-radius: 15px;
+            margin-top: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+        #reward p {
+            color: #4a4a4a;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 15px;
+            text-align: left;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="main-card">
+        <div id="game-container">
+            <h1 id="game-title">Catch Your Degree! 👩‍🎓</h1>
+            <p class="instructions" id="game-desc">
+                Geser karakter ke kanan/kiri. Tangkap <b>Tesis (📜), Pesta (🎉), Bintang (✨)</b> sampai dapet <b>10 poin</b>. <br>
+                <span style="color: #ff4d6d;">Awas! Jangan tangkap Buku Revisi (📚)!</span>
+            </p>
+            
+            <div id="game-box">
+                <button class="btn-start" id="start-btn" onclick="startGame()">Mulai Main</button>
+                <div id="catcher">👩‍🎓</div>
+            </div>
+            
+            <div id="score-board">Skor: <span id="score">0</span> / 10</div>
+        </div>
+
+        <div id="reward">
+            <h1>Happy Graduation! 🎉</h1>
+            
+            <img src="foto-kelulusan.jpg" alt="Hadiah Kelulusan">
+            
+            <p><b>Selamat atas kelulusan sidang tesisnya di Taiwan!</b> ❤️<br><br>
+            Perjuangan kuliah jauh-jauh di luar negeri akhirnya terbayar lunas. Aku bener-bener bangga banget sama pencapaian kamu. Bahkan mba-mba Red Velvet aja denger kabarnya langsung heboh dateng buat ngerayain bareng kamu tuh, hehe. <i>You did wonderfully!</i> Selamat menyandang gelar barunya ya! ✨</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        let score = 0;
+        let gameActive = false;
+        let gameInterval;
+        let fallingObjects = [];
+        
+        const catcher = document.getElementById('catcher');
+        const scoreDisplay = document.getElementById('score');
+        const gameBox = document.getElementById('game-box');
+        const startBtn = document.getElementById('start-btn');
+
+        const goodItems = ['📜', '🎉', '✨', '🎓'];
+        const badItems = ['📚'];
+
+        // Kontrol Gerakan Catcher (Mouse & Touch HP)
+        function moveCatcher(e) {
+            if (!gameActive) return;
+            const rect = gameBox.getBoundingClientRect();
+            let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            
+            if (clientX) {
+                let x = clientX - rect.left - (catcher.clientWidth / 2);
+                if (x < 0) x = 0;
+                if (x > rect.width - catcher.clientWidth) x = rect.width - catcher.clientWidth;
+                catcher.style.left = x + 'px';
+                catcher.style.transform = 'translateX(0)'; // reset centring css awal
+            }
+        }
+
+        gameBox.addEventListener('mousemove', moveCatcher);
+        gameBox.addEventListener('touchmove', moveCatcher, { passive: true });
+
+        function startGame() {
+            startBtn.style.display = 'none';
+            catcher.style.display = 'block';
+            score = 0;
+            scoreDisplay.innerText = score;
+            gameActive = true;
+            fallingObjects = [];
+            
+            // Spawn item setiap 700ms
+            gameInterval = setInterval(spawnObject, 700);
+            requestAnimationFrame(updateGame);
+        }
+
+        function spawnObject() {
+            if (!gameActive) return;
+            
+            const item = document.createElement('div');
+            item.className = 'falling-item';
+            
+            // Tentukan apakah item baik atau buruk (80% baik, 20% buruk)
+            const isGood = Math.random() > 0.2;
+            if (isGood) {
+                item.innerText = goodItems[Math.floor(Math.random() * goodItems.length)];
+                item.dataset.type = 'good';
+            } else {
+                item.innerText = badItems[Math.floor(Math.random() * badItems.length)];
+                item.dataset.type = 'bad';
+            }
+
+            const rect = gameBox.getBoundingClientRect();
+            item.style.left = Math.floor(Math.random() * (rect.width - 30)) + 'px';
+            item.style.top = '-30px';
+            
+            gameBox.appendChild(item);
+            fallingObjects.push({
+                element: item,
+                y: -30,
+                speed: Math.random() * 2 + 3 // Kecepatan acak biar seru
+            });
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            const catcherRect = catcher.getBoundingClientRect();
+            const boxRect = gameBox.getBoundingClientRect();
+
+            for (let i = fallingObjects.length - 1; i >= 0; i--) {
+                let obj = fallingObjects[i];
+                obj.y += obj.speed;
+                obj.element.style.top = obj.y + 'px';
+
+                let itemRect = obj.element.getBoundingClientRect();
+
+                // Deteksi Tabrakan dengan Catcher
+                if (
+                    itemRect.bottom >= catcherRect.top &&
+                    itemRect.top <= catcherRect.bottom &&
+                    itemRect.right >= catcherRect.left &&
+                    itemRect.left <= catcherRect.right
+                ) {
+                    // Jika Kena Catcher
+                    if (obj.element.dataset.type === 'good') {
+                        score++;
+                        // Ledakan confetti mini pas dapet poin
+                        confetti({ particleCount: 15, spread: 40, origin: { y: 0.6 } });
+                    } else {
+                        score = Math.max(0, score - 2); // Kurang 2 poin kalau kena Revisi
+                        // Efek flash merah tipis kalau kena zonk
+                        gameBox.style.backgroundColor = '#ffccd5';
+                        setTimeout(() => gameBox.style.backgroundColor = '#fff0f3', 150);
+                    }
+                    
+                    scoreDisplay.innerText = score;
+                    obj.element.remove();
+                    fallingObjects.splice(i, 1);
+
+                    // Cek Kondisi Menang
+                    if (score >= 10) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                // Jika melewati batas bawah box
+                if (obj.y > boxRect.height) {
+                    obj.element.remove();
+                    fallingObjects.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            
+            // Bersihkan semua item yang tersisa
+            fallingObjects.forEach(obj => obj.element.remove());
+            fallingObjects = [];
+
+            // Tampilkan Reward
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('reward').style.display = 'block';
+            document.getElementById('main-card').style.maxWidth = '460px';
+
+            // Hujan Selebrasi Confetti Besar!
+            var end = Date.now() + (4 * 1000);
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+    </script>
+</body>
+</html>
